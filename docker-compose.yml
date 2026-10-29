@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    environment: {POSTGRES_USER: reconai, POSTGRES_PASSWORD: reconai, POSTGRES_DB: reconai}
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  app:
+    build: .
+    depends_on: [db]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://reconai:reconai@db:5432/reconai
+    ports: ["8501:7860"]
+volumes:
+  pgdata:
