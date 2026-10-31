@@ -133,7 +133,7 @@ with tabs[1]:
     else:
         l.altair_chart(alt.Chart(hm).mark_rect().encode(
             x=alt.X("hour:O"), y="method:N", color=alt.Color("failure_rate:Q", scale=alt.Scale(scheme="reds"), title="fail rate"),
-            tooltip=["method", "hour", "attempts", alt.Tooltip("failure_rate:Q", format=".1%")]), width="stretch")
+            tooltip=["method", "hour", "attempts", alt.Tooltip("failure_rate:Q", format=".1%")]), use_container_width=True)
     r.subheader("Why they fail")
     failed_reasons = P[P.failed].error_reason.value_counts()
     if failed_reasons.empty:
