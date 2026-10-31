@@ -2,8 +2,8 @@
 ---
 title: ReconAI
 emoji: 💸
-sdk: docker
-app_port: 7860
+sdk: streamlit
+app_port: 8501
 ---
 
 Small online merchants lose hours every week working out **why payments failed** and **why their
