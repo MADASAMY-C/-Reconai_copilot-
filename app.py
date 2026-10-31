@@ -9,7 +9,10 @@ import typing_extensions
 # schema wrappers use. Fall back to typing_extensions.TypedDict (supports it)
 # before Altair imports.
 if sys.version_info >= (3, 14):
-    typing.TypedDict = typing_extensions.TypedDict  # noqa: B010
+    try:
+        typing.TypedDict = typing_extensions.TypedDict  # noqa: B010
+    except Exception:  # never let a compatibility shim block startup
+        pass
 
 import uuid
 
