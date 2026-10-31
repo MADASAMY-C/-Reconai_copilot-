@@ -235,10 +235,10 @@ with tabs[4]:
         st.download_button("Download HTML", body, "weekly_digest.html", "text/html")
         if st.button("Email it to me"):
             ok = digest.send_email(headline, body)
-        if ok:
-            st.success("Sent.")
-        else:
-            st.warning("Set SMTP_HOST and DIGEST_TO to enable email.")
+            if ok:
+                st.success("Sent.")
+            else:
+                st.warning("Set SMTP_HOST and DIGEST_TO to enable email.")
 
 # ------------------------------------------------------------------ impact
 with tabs[5]:
