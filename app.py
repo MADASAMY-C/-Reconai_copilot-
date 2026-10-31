@@ -122,7 +122,7 @@ with tabs[1]:
         show = hs.assign(failure_rate=(hs.failure_rate * 100).round(1), baseline_rate=(hs.baseline_rate * 100).round(1),
                          lift=hs.lift.round(1), excess_failures=hs.excess_failures.round(0))
         st.dataframe(show.rename(columns={"failure_rate": "fail %", "baseline_rate": "baseline %", "failed_value_inr": "failed ₹"}),
-                     hide_index=True, use_container_width=True)
+                     hide_index=True, width="stretch")
     l, r = st.columns(2)
     hm = failures.failure_by(P, ["method", "hour"])
     l.subheader("Failure rate by method × hour")
@@ -131,7 +131,7 @@ with tabs[1]:
     else:
         l.altair_chart(alt.Chart(hm).mark_rect().encode(
             x=alt.X("hour:O"), y="method:N", color=alt.Color("failure_rate:Q", scale=alt.Scale(scheme="reds"), title="fail rate"),
-            tooltip=["method", "hour", "attempts", alt.Tooltip("failure_rate:Q", format=".1%")]), use_container_width=True)
+            tooltip=["method", "hour", "attempts", alt.Tooltip("failure_rate:Q", format=".1%")]), width="stretch")
     r.subheader("Why they fail")
     failed_reasons = P[P.failed].error_reason.value_counts()
     if failed_reasons.empty:
@@ -152,13 +152,13 @@ with tabs[2]:
     if MM.empty:
         st.success("Everything reconciles.")
     else:
-        st.dataframe(summ.rename(columns={"amount_at_risk_inr": "₹ at risk"}), hide_index=True, use_container_width=True)
+        st.dataframe(summ.rename(columns={"amount_at_risk_inr": "₹ at risk"}), hide_index=True, width="stretch")
         f1, f2 = st.columns(2)
         checks = f1.multiselect("Issue type", list(recon.CHECK_LABELS), default=list(recon.CHECK_LABELS),
                                 format_func=recon.CHECK_LABELS.get)
         sev = f2.multiselect("Severity", ["high", "medium", "low"], default=["high", "medium", "low"])
         view = MM[MM["check"].isin(checks) & MM.severity.isin(sev)]
-        st.dataframe(view, hide_index=True, use_container_width=True)
+        st.dataframe(view, hide_index=True, width="stretch")
         if st.download_button("⬇️ Export issues (CSV)", view.to_csv(index=False), "reconai_issues.csv"):
             log("csv_exported")
         with st.expander("What to do about each type"):
