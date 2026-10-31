@@ -65,9 +65,9 @@ def rule_based_narrative(facts: dict) -> dict:
 def make_narrative(facts: dict) -> tuple[dict, str]:
     if ai_agent.available():
         try:
-            return ai_agent.digest_narrative(facts), "claude"
+            return ai_agent.digest_narrative(facts), "qwen"
         except Exception as ex:  # never fail the weekly send because the LLM is down
-            print("Claude unavailable, using rule-based digest:", ex)
+            print("Qwen unavailable, using rule-based digest:", ex)
     return rule_based_narrative(facts), "rules"
 
 

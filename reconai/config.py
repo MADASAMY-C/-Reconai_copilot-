@@ -9,8 +9,9 @@ except ImportError:  # dotenv is optional
     pass
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///reconai.db")
-ANTHROPIC_API_KEY = os.getenv("", "")
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5")
+
+# Local LLM (no API key required — runs on CPU via torch/transformers)
+QWEN_MODEL = os.getenv("QWEN_MODEL", "Qwen/Qwen2.5-0.5B-Instruct")
 
 # Assumed merchant pricing plan (fraction of amount). Edit to match a real plan.
 # (UPI MDR is 0% for most merchants in India, hence 0.0.)

@@ -53,9 +53,9 @@ with st.sidebar:
     days = st.radio("Period", [7, 14, 30], format_func=lambda d: f"Last {d} days")
     st.caption(f"Data through **{as_of:%d %b %Y}** · DB: `{ENGINE.dialect.name}`")
     if ai_agent.available():
-        st.success("LLm connected")
+        st.success("Qwen connected")
     else:
-        st.warning("No ANTHROPIC_API_KEY: AI chat off, rule-based digest on.")
+        st.warning("Qwen not available: AI chat off, rule-based digest on.")
     with st.expander("📂 Use your own data"):
         st.caption("Upload Razorpay-style CSVs (amounts in paise). Download the demo zip for the exact column layout.")
         st.download_button("Demo CSVs (zip)", generate_data.to_zip_bytes(F), "reconai_demo_csvs.zip")
@@ -172,7 +172,7 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("Ask your data anything")
     if not ai_agent.available():
-        st.warning("Set `ANTHROPIC_API_KEY` to enable the chat (tool-use over your data).")
+        st.warning("Qwen not available: AI chat off, rule-based digest on.")
     chat = st.session_state.setdefault("chat", [])
     ideas = ["Why is my settlement short by ₹4,200?", "Which payments were captured but never settled?",
              "Why did my success rate drop recently?", "Am I being overcharged on fees?"]
@@ -219,7 +219,7 @@ with tabs[4]:
         log("digest_generated", source)
     if "digest" in st.session_state:
         body, headline, source = st.session_state.digest
-        st.caption(f"Narrative written by: **{'Claude (structured output)' if source == 'claude' else 'rule-based fallback'}**")
+        st.caption(f"Narrative written by: **{'Qwen (structured output)' if source == 'claude' else 'rule-based fallback'}**")
         st.components.v1.html(body, height=520, scrolling=True)
         st.download_button("Download HTML", body, "weekly_digest.html", "text/html")
         if st.button("Email it to me"):
