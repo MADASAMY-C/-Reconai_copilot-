@@ -1,6 +1,17 @@
 """ReconAI - AI payment-failure & reconciliation copilot (Streamlit)."""
 from __future__ import annotations
 
+import sys
+
+# Python 3.14's typing.TypedDict rejects closed=True, which Altair's generated
+# schema wrappers use. Fall back to typing_extensions.TypedDict (supports it)
+# before Altair imports.
+if sys.version_info >= (3, 14):
+    import typing
+    import typing_extensions
+
+    typing.TypedDict = typing_extensions.TypedDict  # noqa: B010
+
 import uuid
 
 import altair as alt
