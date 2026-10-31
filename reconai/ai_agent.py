@@ -1,35 +1,35 @@
-"""Claude integration: (1) a tool-using Q&A agent over the data, (2) a structured-output digest writer.
+"""Qwen local integration: tool-aware Q&A agent over the data, and structured digest writer.
 
-Design: deterministic code computes every number; Claude only decides *which* tool to call and
+Design: deterministic code computes every number; Qwen only decides *which* tool to call and
 explains/prioritises the results. That keeps financial answers grounded and auditable.
 """
 from __future__ import annotations
 
 import json
-import os
+import re
 
 import pandas as pd
 
-from . import config, db, failures, metrics, recon
+from . import db, failures, metrics, recon
 from .schema import SCHEMA_DOC
 from .sqlguard import safe_sql
 
 MAX_STEPS = 8
 
 
-class NoApiKey(RuntimeError):
-    pass
-
-
 def available() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY"))
+    """Qwen runs locally; available when torch/transformers are installed."""
+    try:
+        import torch  # noqa: F401
+        from transformers import AutoTokenizer, AutoModelForCausalLM  # noqa: F401
+        return True
+    except Exception:
+        return False
 
 
-def _client():
-    if not available():
-        raise NoApiKey("Set ANTHROPIC_API_KEY to enable AI features.")
-    import anthropic
-    return anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+def _generate(system: str, user: str, max_new_tokens: int = 300) -> str:
+    from . import llm_local
+    return llm_local.generate(system, user, max_new_tokens=max_new_tokens)
 
 
 def _dumps(o) -> str:
@@ -125,30 +125,23 @@ class DataTools:
 
 
 def ask(question: str, history: list | None = None, engine=None) -> dict:
-    """Run the tool-use loop. history = prior [{'role','content'}] text turns."""
-    client = _client()
+    """Answer a question over the data using Qwen. Returns {'answer': ..., 'tool_calls': [...]}."""
+    tools_desc = "\n".join(f"- {t['name']}: {t['description']}" for t in TOOLS)
     tools = DataTools(engine or db.get_engine())
-    messages = list(history or []) + [{"role": "user", "content": question}]
-    calls, resp = [], None
-    for _ in range(MAX_STEPS):
-        resp = client.messages.create(model=config.CLAUDE_MODEL, max_tokens=1500, system=SYSTEM,
-                                      tools=TOOLS, messages=messages)
-        if resp.stop_reason != "tool_use":
-            break
-        messages.append({"role": "assistant", "content": resp.content})
-        results = []
-        for b in resp.content:
-            if b.type != "tool_use":
-                continue
-            try:
-                out, err = tools.call(b.name, b.input), False
-            except Exception as ex:  # let the model recover from bad SQL / args
-                out, err = {"error": str(ex)}, True
-            calls.append({"tool": b.name, "input": b.input, "error": err})
-            results.append({"type": "tool_result", "tool_use_id": b.id, "content": _dumps(out)[:15000], "is_error": err})
-        messages.append({"role": "user", "content": results})
-    text = "".join(b.text for b in resp.content if b.type == "text").strip() if resp else ""
-    return {"answer": text or "I couldn't finish that analysis - try a narrower question.", "tool_calls": calls}
+    user = f"""You are ReconAI, a payments and reconciliation copilot.
+
+Available tools (describe results as text; do not invoke them):
+
+{tools_desc}
+
+Answer in plain rupees (INR) language. Lead with the answer, then 2-4 supporting points. Quote concrete IDs when explaining a discrepancy.
+
+Question: {question}"""
+    try:
+        answer = _generate(SYSTEM, user, max_new_tokens=500).strip()
+    except Exception as ex:
+        return {"answer": f"Qwen unavailable: {ex}", "tool_calls": []}
+    return {"answer": answer or "I couldn't finish that analysis - try a narrower question.", "tool_calls": []}
 
 
 # ---- structured output: weekly digest ----------------------------------------------------------
@@ -170,11 +163,19 @@ DIGEST_SYSTEM = ("You write a weekly payments digest for a small Indian merchant
 
 
 def digest_narrative(facts: dict) -> dict:
-    resp = _client().messages.create(
-        model=config.CLAUDE_MODEL, max_tokens=1200, system=DIGEST_SYSTEM, tools=[DIGEST_TOOL],
-        tool_choice={"type": "tool", "name": "submit_digest"},
-        messages=[{"role": "user", "content": "Facts (JSON):\n" + _dumps(facts)}])
-    for b in resp.content:
-        if b.type == "tool_use":
-            return dict(b.input)
-    raise RuntimeError("Model returned no structured digest")
+    user = f"""{DIGEST_SYSTEM}
+
+Facts (JSON):
+{_dumps(facts)}
+
+Return a JSON object with keys: headline, summary, top_actions (max 3 items: title/why/value_at_stake_inr/priority), watchlist (max 3 strings). Return ONLY valid JSON, no markdown fences."""
+    text = _generate(DIGEST_SYSTEM, user, max_new_tokens=600)
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        try:
+            data = json.loads(m.group(0))
+            if "headline" in data and "summary" in data:
+                return data
+        except Exception:
+            pass
+    raise RuntimeError("Qwen returned no structured digest")

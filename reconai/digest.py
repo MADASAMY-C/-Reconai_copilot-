@@ -72,10 +72,12 @@ def make_narrative(facts: dict) -> tuple[dict, str]:
 
 
 def render_html(facts: dict, nar: dict) -> str:
-    e, k = html.escape, facts["kpis"]
+    def esc(x):
+        return html.escape("" if x is None else str(x))
+    e, k = esc, facts["kpis"]
     acts = "".join(
-        f"<li style='margin-bottom:10px'><b>{e(a['title'])}</b> "
-        f"<span style='color:#b45309'>[{e(a['priority'])} · ₹{a['value_at_stake_inr']:,.0f}]</span><br>{e(a['why'])}</li>"
+        f"<li style='margin-bottom:10px'><b>{e(a.get('title', ''))}</b> "
+        f"<span style='color:#b45309'>[{e(a.get('priority', ''))} · ₹{float(a.get('value_at_stake_inr') or 0):,.0f}]</span><br>{e(a.get('why', ''))}</li>"
         for a in nar.get("top_actions", []))
     watch = "".join(f"<li>{e(w)}</li>" for w in nar.get("watchlist", []))
     tiles = "".join(f"<td style='padding:8px 14px;border:1px solid #e5e7eb;text-align:center'><div style='font-size:12px;color:#6b7280'>{e(l)}</div>"

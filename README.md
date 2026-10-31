@@ -1,4 +1,10 @@
 # 💸 ReconAI: AI payment-failure & reconciliation copilot
+---
+title: ReconAI
+emoji: 💸
+sdk: docker
+app_port: 7860
+---
 
 Small online merchants lose hours every week working out **why payments failed** and **why their
 settlement doesn't match their bank credit**. ReconAI explains both in plain language.

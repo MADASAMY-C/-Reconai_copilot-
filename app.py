@@ -53,7 +53,7 @@ with st.sidebar:
     days = st.radio("Period", [7, 14, 30], format_func=lambda d: f"Last {d} days")
     st.caption(f"Data through **{as_of:%d %b %Y}** · DB: `{ENGINE.dialect.name}`")
     if ai_agent.available():
-        st.success("Claude connected")
+        st.success("LLm connected")
     else:
         st.warning("No ANTHROPIC_API_KEY: AI chat off, rule-based digest on.")
     with st.expander("📂 Use your own data"):
@@ -91,9 +91,13 @@ with tabs[0]:
     d = metrics.daily(F, start, as_of).set_index("date")
     a, b = st.columns(2)
     a.subheader("Daily GMV (₹)")
-    a.bar_chart(d["gmv_inr"])
     b.subheader("Daily success rate")
-    b.line_chart(d["success_rate"])
+    if d.empty or d["gmv_inr"].isna().all():
+        a.info("No payment data in this period.")
+        b.info("No payment data in this period.")
+    else:
+        a.bar_chart(d["gmv_inr"])
+        b.line_chart(d["success_rate"])
     st.info("Tip: open **Ask AI** and try *“Why is my settlement short by ₹4,200?”*")
 
 # ------------------------------------------------------------------ failures
@@ -111,11 +115,18 @@ with tabs[1]:
     l, r = st.columns(2)
     hm = failures.failure_by(P, ["method", "hour"])
     l.subheader("Failure rate by method × hour")
-    l.altair_chart(alt.Chart(hm).mark_rect().encode(
-        x=alt.X("hour:O"), y="method:N", color=alt.Color("failure_rate:Q", scale=alt.Scale(scheme="reds"), title="fail rate"),
-        tooltip=["method", "hour", "attempts", alt.Tooltip("failure_rate:Q", format=".1%")]), use_container_width=True)
+    if hm.empty or hm["failure_rate"].isna().all():
+        l.info("No failure data to chart.")
+    else:
+        l.altair_chart(alt.Chart(hm).mark_rect().encode(
+            x=alt.X("hour:O"), y="method:N", color=alt.Color("failure_rate:Q", scale=alt.Scale(scheme="reds"), title="fail rate"),
+            tooltip=["method", "hour", "attempts", alt.Tooltip("failure_rate:Q", format=".1%")]), use_container_width=True)
     r.subheader("Why they fail")
-    r.bar_chart(P[P.failed].error_reason.value_counts())
+    failed_reasons = P[P.failed].error_reason.value_counts()
+    if failed_reasons.empty:
+        r.info("No failures in this period.")
+    else:
+        r.bar_chart(failed_reasons)
     if st.button("🤖 Explain these failures & suggest fixes", disabled=not ai_agent.available()):
         log("explain_failures")
         with st.spinner("Analysing…"):
@@ -234,7 +245,9 @@ with tabs[5]:
         k[1].metric("Questions asked", qs)
         k[2].metric("Digests generated", dg)
         k[3].metric("Helpful rate", f"{up / (up + dn):.0%}" if up + dn else "n/a")
-        st.bar_chart(ev.assign(date=ev.ts.dt.normalize()).groupby(["date", "event"]).size().unstack(fill_value=0))
+        chart_data = ev.assign(date=ev.ts.dt.normalize()).groupby(["date", "event"]).size().unstack(fill_value=0)
+        if not chart_data.empty:
+            st.bar_chart(chart_data)
         st.markdown("**Estimated time saved**: replace these assumptions with numbers you measured in user interviews.")
         m1, m2 = st.columns(2)
         mq = m1.number_input("Minutes saved per answered question", 0, 120, 10)
